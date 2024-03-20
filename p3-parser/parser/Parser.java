@@ -55,8 +55,55 @@ public class Parser {
   // TODO: Implement this method.
   static public State computeClosure(Item I, Grammar grammar) {
     State closure = new State();
+    closure.add(I);
+    ArrayList<Item> J = new ArrayList<>();
+    J.add(I);
+    ArrayList<Item> all = J;
+    boolean added = true;
+    while(added){
+      List<Item> newItems = new ArrayList<>();
+      added = false;
+      for (Item b: J) {
+        String nextSymbol = b.getNextSymbol();
 
+        if(grammar.isNonterminal(nextSymbol)){
+          for(Rule rule: grammar.nt2rules.get(nextSymbol)){
+            for (String t : getLookahead(b, grammar)) {
+              Item i = new Item(rule, 0, t);
+              if (!J.contains(i)) {
+                newItems.add(i);
+                closure.add(i);
+                added = true;
+              }
+            }
+          }
+        }
+      }
+      J= new ArrayList<>(newItems);
+      all.addAll(newItems);
+    }
     return closure;
+  }
+
+  private static HashSet<String> getLookahead(Item b, Grammar grammar){
+    if(b.getNextNextSymbol() == null){
+      HashSet<String> l = new HashSet<>();
+      l.add(b.getLookahead());
+      return l;
+    } else if (b.getDot() == 0) {
+      HashSet<String> l = new HashSet<>();
+      l.add(b.getNextNextSymbol());
+      return l;
+    }
+    else{
+      if(grammar.isNonterminal(b.getNextNextSymbol())){
+        return grammar.firstPlus.get(b.getNextNextSymbol());
+      }else{
+        HashSet<String> l = new HashSet<>();
+        l.add(b.getNextNextSymbol());
+        return l;
+      }
+    }
   }
 
   // TODO: Implement this method.

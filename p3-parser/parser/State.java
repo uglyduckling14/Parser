@@ -56,7 +56,9 @@ public class State implements Comparable<State> {
     public String toString() {
         return this.name + ": " + items.toString();
     }
-
+    public void add(Item b){
+        items.add(b);
+    }
     @Override
     public int compareTo(State o) {
         return Integer.valueOf(this.name).compareTo(Integer.valueOf(o.name));
