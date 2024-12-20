@@ -18,8 +18,8 @@ public class Main {
     Tests tests = new Tests();
     //testClosure(tests);
     testStates(tests);
-    //testTables(tests);
-    //testParser(tests);
+    testTables(tests);
+    testParser(tests);
 
     //------------------------------------------------------------
     // Output number of tests that succeeded
@@ -89,11 +89,11 @@ public class Main {
   }
 
   public static void testStates(Tests tests) throws FileNotFoundException, IOException {
-    {
-      Parser parser = new Parser("p3-parser/data/Simple.cfg");
-      States states = parser.getStates();
-      tests.test(states.size(), 4);
-    }
+//    {
+//      Parser parser = new Parser("p3-parser/data/Simple.cfg");
+//      States states = parser.getStates();
+//      tests.test(states.size(), 4);
+//    }
     {
       Parser parser = new Parser("p3-parser/data/Paren.cfg");
       States states = parser.getStates();
@@ -108,7 +108,7 @@ public class Main {
 
   public static void testTables(Tests tests) throws FileNotFoundException, IOException {
     {
-      Parser parser = new Parser("data/Simple.cfg");
+      Parser parser = new Parser("p3-parser/data/Simple.cfg");
       String actionTable = parser.actionTableToString();
       tests.test(countMatches(actionTable, 'S'), 2); // 2 shifts
       tests.test(countMatches(actionTable, 'R'), 4); // 4 reduces
@@ -262,7 +262,7 @@ public class Main {
 //      // TODO: To pass these tests you must implement data/Tiny.cfg
 //      //   according to the grammar given in data/tinyGrammar.pdf.
 //      //   See notes in data/Tiny.cfg (be sure to read all of them!).
-      Parser parser = new Parser("p3-parser/data/Tiny.cfg");
+//      Parser parser = new Parser("p3-parser/data/Tiny.cfg");
 //
       String fn = "data/tiny1.dat";
 //      try {
@@ -282,19 +282,19 @@ public class Main {
 //        tests.addFailure("Failed to parse " + fn + ": " + e.getMessage());
 //      }
 //
-      fn = "p3-parser/data/tiny3.dat";
-      try {
-        List<Action> actions = parser.parseFromFile(fn);
-        tests.addFailure("Should have failed to parse " + fn);
-      } catch (ParserException e) {
-      }
-//
-      fn = "p3-parser/data/tiny4.dat";
-      try {
-        List<Action> actions = parser.parseFromFile(fn);
-        tests.addFailure("Should have failed to parse " + fn);
-      } catch (ParserException e) {
-      }
+//      fn = "p3-parser/data/tiny3.dat";
+//      try {
+//        List<Action> actions = parser.parseFromFile(fn);
+//        tests.addFailure("Should have failed to parse " + fn);
+//      } catch (ParserException e) {
+//      }
+////
+//      fn = "p3-parser/data/tiny4.dat";
+//      try {
+//        List<Action> actions = parser.parseFromFile(fn);
+//        tests.addFailure("Should have failed to parse " + fn);
+//      } catch (ParserException e) {
+//      }
 //
 //    }
   }

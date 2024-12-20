@@ -45,20 +45,50 @@ public class Parser {
 
     states = new States();
 
-    // TODO: Call methods to compute the states and parsing tables here.
+    computeActionTable();
+    computeGotoTable();
   }
-
   public States getStates() {
+    Item s = new Item(grammar.startRule, 0, "$");
+    State state = computeClosure(s, grammar);
+    state.add(s);
+    states.add(state);
+    List<State> newStates = new ArrayList<>(states.getStates());
+    boolean added = true;
+    int name = 1;
+
+    while (added) {
+      added = false;
+      List<State> newStatesToAdd = new ArrayList<>();
+
+      for (State sta : newStates) {
+        for (Item item : sta.getItems()) {
+          String nextSymbol = item.getNextSymbol();
+          if(nextSymbol != null && grammar.isNonterminal(nextSymbol)) {
+
+            State newState = GOTO(sta, nextSymbol,grammar);
+            if (!states.getStates().contains(newState)) {
+              newState.setName(name);
+              newStatesToAdd.add(newState);
+              added = true;
+              states.add(newState);
+              name++;
+            }else{
+              System.out.println("duplicate state");
+            }
+          }
+        }
+      }
+      newStates = new ArrayList<>(newStatesToAdd);
+    }
+
     return states;
   }
-
-  // TODO: Implement this method.
   static public State computeClosure(Item I, Grammar grammar) {
     State closure = new State();
     closure.add(I);
     ArrayList<Item> J = new ArrayList<>();
     J.add(I);
-    ArrayList<Item> all = J;
     boolean added = true;
     while(added){
       List<Item> newItems = new ArrayList<>();
@@ -80,7 +110,6 @@ public class Parser {
         }
       }
       J= new ArrayList<>(newItems);
-      all.addAll(newItems);
     }
     return closure;
   }
@@ -97,7 +126,7 @@ public class Parser {
     }
     else{
       if(grammar.isNonterminal(b.getNextNextSymbol())){
-        return grammar.firstPlus.get(b.getNextNextSymbol());
+        return grammar.first.get(b.getNextNextSymbol());
       }else{
         HashSet<String> l = new HashSet<>();
         l.add(b.getNextNextSymbol());
@@ -111,6 +140,17 @@ public class Parser {
   //   the given state on the symbol X.
   static public State GOTO(State state, String X, Grammar grammar) {
     State ret = new State();
+    for (Item item : state.getItems()) {
+      String nextSymbol = item.getNextSymbol();
+
+      // If the item has the form [A → α•Xβ, a], where X is the next symbol
+      if (nextSymbol != null && nextSymbol.equals(X)) {
+        // Create a new item by shifting the dot one position to the right
+        Item shiftedItem = item.advance();
+        // Add the shifted item to the GOTO state
+        ret.add(shiftedItem);
+      }
+    }
     return ret;
   }
 
@@ -122,7 +162,12 @@ public class Parser {
   // help you debug if you can format it nicely.
   public String actionTableToString() {
     StringBuilder builder = new StringBuilder();
-
+    for (int state : actionTable.keySet()) {
+      for (String terminal : actionTable.get(state).keySet()) {
+        builder.append(String.format("%8s", actionTable.get(state).get(terminal)));
+      }
+      builder.append("\n");
+    }
     return builder.toString();
   }
 
@@ -134,33 +179,106 @@ public class Parser {
   // help you debug if you can format it nicely.
   public String gotoTableToString() {
     StringBuilder builder = new StringBuilder();
+    for (int state : gotoTable.keySet()) {
+      for (String nonterminal : gotoTable.get(state).keySet()) {
+        builder.append(String.format("%8s", gotoTable.get(state).get(nonterminal)));
+      }
+      builder.append("\n");
+    }
     return builder.toString();
   }
 
+  public void computeActionTable() {
+    for (State state : states.getStates()) {
+      HashMap<String, Action> actionMap = new HashMap<>();
+      for (Item item : state.getItems()) {
+        String nextSymbol = item.getNextSymbol();
+        if (nextSymbol == null) {
+          // If the item is of the form [A → α•, a], add a reduce action
+
+            Action action = Action.createReduce(item.getRule());
+            actionMap.put(item.getLookahead(), action);
+
+        } else if (grammar.isTerminal(nextSymbol)) {
+          // If the next symbol is a terminal, add a shift action
+          State nextState = GOTO(state, nextSymbol, grammar);
+          int nextStateIndex = getStateIndex(nextState);
+          Action action = Action.createShift(nextStateIndex);
+          actionMap.put(nextSymbol, action);
+        }
+      }
+      actionTable.put(getStateIndex(state), actionMap);
+    }
+  }
+  public void computeGotoTable() {
+    for (State state : states.getStates()) {
+      HashMap<String, Integer> gotoMap = new HashMap<>();
+      for (String symbol : grammar.symbols) {
+        if (grammar.isNonterminal(symbol)) {
+          // Compute the GOTO set for the nonterminal symbol
+          State nextState = GOTO(state, symbol, grammar);
+          int nextStateIndex = getStateIndex(nextState);
+          gotoMap.put(symbol, nextStateIndex);
+        }
+      }
+      gotoTable.put(getStateIndex(state), gotoMap);
+    }
+  }
+  private int getStateIndex(State state) {
+    int index = 0;
+    for (State s : states.getStates()) {
+      if (s.equals(state)) {
+        return index;
+      }
+      index++;
+    }
+    return -1; // State not found
+  }
   // TODO: Implement this method
   // You should return a list of the actions taken.
   public List<Action> parse(Lexer scanner) throws ParserException {
-    // tokens is the output from the scanner. It is the list of tokens
-    // scanned from the input file.
-    // To get the token type: v.getSymbolicName(t.getType())
-    // To get the token lexeme: t.getText()
     ArrayList<? extends Token> tokens = new ArrayList<>(scanner.getAllTokens());
     Vocabulary v = scanner.getVocabulary();
-
-    Stack<String> input = new Stack<>();
-    Collections.reverse(tokens);
-    input.add(Util.EOF);
-    for (Token t : tokens) {
-      input.push(v.getSymbolicName(t.getType()));
-    }
-    Collections.reverse(tokens);
-//    System.out.println(input);
-
-    // TODO: Parse the tokens. On an error, throw a ParseException, like so:
-    //    throw ParserException.create(tokens, i)
+    Stack<String> stack = new Stack<>();
+    stack.push("0"); // Initial state
     List<Action> actions = new ArrayList<>();
+
+    for (int i = 0; i < tokens.size(); i++) {
+      Token token = tokens.get(i);
+      String tokenType = v.getSymbolicName(token.getType());
+      int currentState = Integer.parseInt(stack.peek());
+      Action action = actionTable.get(currentState).get(tokenType);
+
+      if (action == null) {
+        throw ParserException.create(tokens, i);
+      } else if (action.isShift()) {
+        // Shift action
+        stack.push(tokenType);
+        stack.push(String.valueOf(action.getState()));
+        actions.add(action);
+      } else if (action.isReduce()) {
+        // Reduce action
+        Rule rule = action.getRule();
+        int numSymbols = rule.getRhs().size();
+        for (int j = 0; j < 2 * numSymbols; j++) {
+          stack.pop(); // Pop state and symbol from stack
+        }
+        String nonterminal = rule.getLhs();
+        currentState = Integer.parseInt(stack.peek());
+        int nextState = gotoTable.get(currentState).get(nonterminal);
+        stack.push(nonterminal);
+        stack.push(String.valueOf(nextState));
+        actions.add(action);
+      } else if (action.isAccept()) {
+        // Accept action
+        actions.add(action);
+        break; // Parsing successful
+      }
+    }
+
     return actions;
   }
+
 
   //-------------------------------------------------------------------
   // Convenience functions

@@ -20,7 +20,6 @@ public class State implements Comparable<State> {
     public void setName(int name) {
         this.name = name;
     }
-
     @Override
     public int hashCode() {
         int hash = 7;
@@ -31,7 +30,9 @@ public class State implements Comparable<State> {
         }
         return hash;
     }
-
+    public int getName(){
+        return name;
+    }
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
@@ -51,13 +52,18 @@ public class State implements Comparable<State> {
         }
         return true;
     }
-
+    public List<Item> getItems(){
+        return items;
+    }
     @Override
     public String toString() {
         return this.name + ": " + items.toString();
     }
     public void add(Item b){
-        items.add(b);
+        if(!itemSet.contains(b)){
+            items.add(b);
+            itemSet.add(b);
+        }
     }
     @Override
     public int compareTo(State o) {
